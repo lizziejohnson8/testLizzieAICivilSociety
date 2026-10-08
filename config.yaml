@@ -1,0 +1,30 @@
+# Which job titles count as a match. Matching is case-insensitive and on whole words.
+# A posting is kept if its title contains ANY include keyword and NO exclude keyword.
+include_keywords:
+  - intern
+  - internship
+  - internships
+  - fellow
+  - fellowship
+  - fellowships
+  - summer associate
+  - student
+  - graduate
+  - research assistant
+  - early career
+
+exclude_keywords:
+  - senior
+  - director
+  - postdoc
+  - postdoctoral
+  - principal
+
+# Optional: only keep postings whose location contains one of these (leave empty for all).
+# Pages scraped from careers sites often have no location, so they are always kept.
+locations: []
+
+# Alerts. GitHub issues are created by the workflow automatically.
+# Email and Slack are optional and only used if the matching secrets are set
+# (see README.md).
+email_subject_prefix: "[Internship Alert]"
