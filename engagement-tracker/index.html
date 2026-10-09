@@ -1,0 +1,537 @@
+<title>HKS Engagement Log</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Source+Serif+4:opsz,wght@8..60,500;8..60,650&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: a term ledger. Summary strip up top, then the log grouped by month, newest first; an entry opens in place. */
+:root {
+  --bg: #f7f7f5;
+  --surface: #ffffff;
+  --ink: #1d2230;
+  --muted: #5d6474;
+  --line: #dfe1e6;
+  --accent: #a3283f;
+  --accent-soft: #f6e6e9;
+  --slate: #3c5a7a;
+  --ok: #2f7a4f;
+  --warn: #9a6100;
+  --warn-soft: #fbf0dc;
+  --t1: #3c5a7a; --t2: #a3283f; --t3: #6b7d3a; --t4: #8a5a9e; --t5: #b5772a; --t6: #3f8a8a; --t7: #7a6a5a;
+  --f-display: "Source Serif 4", Georgia, "Times New Roman", serif;
+  --f-body: "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --f-mono: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+  --r: 8px;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #14171e; --surface: #1c2029; --ink: #e8eaef; --muted: #9aa1b0; --line: #2e3442;
+    --accent: #e0788b; --accent-soft: #3a222a; --slate: #8fb0d3; --ok: #6cc193; --warn: #e3b25c; --warn-soft: #33291a;
+    --t1: #8fb0d3; --t2: #e0788b; --t3: #a9bd6c; --t4: #c49ad6; --t5: #e3a65c; --t6: #73c2c2; --t7: #b8a898;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #14171e; --surface: #1c2029; --ink: #e8eaef; --muted: #9aa1b0; --line: #2e3442;
+  --accent: #e0788b; --accent-soft: #3a222a; --slate: #8fb0d3; --ok: #6cc193; --warn: #e3b25c; --warn-soft: #33291a;
+  --t1: #8fb0d3; --t2: #e0788b; --t3: #a9bd6c; --t4: #c49ad6; --t5: #e3a65c; --t6: #73c2c2; --t7: #b8a898;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+body { background: var(--bg); color: var(--ink); font-family: var(--f-body); font-size: 15px; line-height: 1.5; }
+.wrap { max-width: 980px; margin: 0 auto; padding-inline: 16px; padding-block: 28px 64px; display: grid; gap: 24px; }
+h1, h2, h3 { font-family: var(--f-display); font-weight: 650; text-wrap: balance; margin: 0; }
+button, input, select, textarea { font: inherit; color: inherit; }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+header.top { display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: 16px; }
+.eyebrow { font-family: var(--f-mono); font-size: 12px; letter-spacing: .08em; text-transform: uppercase; color: var(--accent); }
+h1 { font-size: clamp(28px, 5vw, 38px); line-height: 1.1; }
+.sub { color: var(--muted); margin: 4px 0 0; max-width: 60ch; }
+.actions { display: flex; gap: 8px; flex-wrap: wrap; }
+.btn { border: 1px solid var(--line); background: var(--surface); border-radius: var(--r); padding: 8px 14px; cursor: pointer; font-weight: 500; }
+.btn:hover { border-color: var(--muted); }
+.btn.primary { background: var(--accent); border-color: var(--accent); color: var(--surface); }
+.btn.primary:hover { filter: brightness(1.08); }
+.btn.ghost { background: transparent; border-color: transparent; color: var(--muted); padding-inline: 8px; }
+.btn.ghost:hover { color: var(--ink); }
+.btn.danger { color: var(--accent); }
+.btn:disabled { opacity: .5; cursor: not-allowed; }
+
+/* Summary */
+.summary { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r); padding: 18px; display: grid; gap: 16px; }
+.summary-head { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 8px; }
+.summary-head h2 { font-size: 18px; }
+.stats { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; }
+.stat { display: grid; gap: 2px; }
+.stat .n { font-family: var(--f-display); font-size: 30px; line-height: 1; font-variant-numeric: tabular-nums; }
+.stat .l { font-size: 12px; color: var(--muted); letter-spacing: .03em; }
+.stat.attn .n { color: var(--warn); }
+.mix { display: grid; gap: 8px; }
+.mixbar { display: flex; height: 10px; border-radius: 5px; overflow: hidden; background: var(--line); gap: 2px; }
+.mixbar span { display: block; height: 100%; min-width: 3px; }
+.legend { display: flex; flex-wrap: wrap; gap: 4px 14px; font-size: 13px; color: var(--muted); }
+.legend i { display: inline-block; width: 9px; height: 9px; border-radius: 2px; margin-right: 6px; vertical-align: 0; }
+.legend b { color: var(--ink); font-weight: 600; font-variant-numeric: tabular-nums; }
+
+/* Filters */
+.filters { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.filters input[type=search] { flex: 1 1 220px; min-width: 0; }
+.field-ctl { border: 1px solid var(--line); background: var(--surface); border-radius: var(--r); padding: 8px 10px; }
+.toggle { display: inline-flex; align-items: center; gap: 6px; font-size: 14px; color: var(--muted); padding: 0 4px; cursor: pointer; }
+
+/* Log */
+.log { display: grid; gap: 22px; }
+.month { display: grid; gap: 0; }
+.month h3 { font-family: var(--f-mono); font-weight: 500; font-size: 12px; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); padding-bottom: 8px; border-bottom: 1px solid var(--line); display: flex; justify-content: space-between; }
+.entry { display: grid; grid-template-columns: 56px minmax(0, 1fr); gap: 14px; padding: 14px 0; border-bottom: 1px solid var(--line); }
+.date { text-align: center; padding-top: 2px; }
+.date .d { font-family: var(--f-display); font-size: 26px; line-height: 1; font-variant-numeric: tabular-nums; }
+.date .w { font-family: var(--f-mono); font-size: 11px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); }
+.body { min-width: 0; display: grid; gap: 6px; }
+.row1 { display: flex; flex-wrap: wrap; gap: 6px 10px; align-items: baseline; justify-content: space-between; }
+.title { font-weight: 600; font-size: 16px; background: none; border: 0; padding: 0; text-align: left; cursor: pointer; color: var(--ink); }
+.title:hover { color: var(--accent); }
+.meta { font-size: 13px; color: var(--muted); }
+.chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.chip { font-size: 12px; padding: 2px 8px; border-radius: 999px; border: 1px solid var(--line); white-space: nowrap; }
+.chip.type { border-color: transparent; color: var(--surface); }
+.chip.role { color: var(--slate); }
+.chip.planned { color: var(--slate); border-style: dashed; }
+.chip.skipped { color: var(--muted); text-decoration: line-through; }
+.chip.example { color: var(--muted); background: var(--bg); font-family: var(--f-mono); }
+.chip.fu { background: var(--warn-soft); color: var(--warn); border-color: transparent; }
+.chip.fu.done { background: transparent; color: var(--ok); border-color: var(--line); }
+.details { display: grid; gap: 10px; padding: 10px 0 2px; }
+.details dl { display: grid; grid-template-columns: 120px minmax(0, 1fr); gap: 6px 12px; margin: 0; font-size: 14px; }
+.details dt { color: var(--muted); font-size: 13px; }
+.details dd { margin: 0; white-space: pre-wrap; overflow-wrap: anywhere; }
+.details .actions { gap: 4px; }
+.confirm { display: inline-flex; gap: 6px; align-items: center; font-size: 13px; color: var(--accent); }
+
+.empty { border: 1px dashed var(--line); border-radius: var(--r); padding: 28px 20px; text-align: center; color: var(--muted); display: grid; gap: 10px; justify-items: center; }
+.empty h3 { color: var(--ink); font-size: 18px; }
+.notice { font-size: 13px; color: var(--muted); }
+.notice.err { color: var(--accent); }
+
+/* Form */
+dialog { border: 1px solid var(--line); border-radius: 12px; padding: 0; background: var(--surface); color: var(--ink); width: min(640px, calc(100vw - 32px)); max-height: calc(100vh - 32px); }
+dialog::backdrop { background: rgba(10, 12, 18, .45); }
+form.entry-form { display: grid; gap: 14px; padding: 20px; }
+.form-head { display: flex; justify-content: space-between; align-items: center; gap: 12px; }
+.form-head h2 { font-size: 22px; }
+.grid2 { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+.grid3 { display: grid; grid-template-columns: 2fr 1fr 1fr; gap: 12px; }
+label.f { display: grid; gap: 4px; font-size: 13px; color: var(--muted); min-width: 0; }
+label.f input, label.f select, label.f textarea { border: 1px solid var(--line); background: var(--bg); border-radius: 6px; padding: 8px 10px; color: var(--ink); width: 100%; min-width: 0; }
+label.f textarea { resize: vertical; min-height: 64px; }
+.check { display: flex; gap: 8px; align-items: center; font-size: 14px; }
+.form-foot { display: flex; justify-content: flex-end; gap: 8px; flex-wrap: wrap; }
+.form-err { color: var(--accent); font-size: 13px; }
+
+.toast { position: fixed; left: 50%; bottom: calc(20px + env(safe-area-inset-bottom, 0px)); transform: translateX(-50%); background: var(--ink); color: var(--bg); padding: 8px 14px; border-radius: 6px; font-size: 14px; }
+
+@media (max-width: 640px) {
+  .stats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .grid2, .grid3 { grid-template-columns: minmax(0, 1fr); }
+  .details dl { grid-template-columns: minmax(0, 1fr); gap: 2px; }
+  .details dd { margin-bottom: 6px; }
+  .entry { grid-template-columns: 44px minmax(0, 1fr); gap: 10px; }
+}
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; animation: none !important; } }
+</style>
+
+<div class="wrap">
+  <header class="top">
+    <div>
+      <div class="eyebrow">Harvard Kennedy School</div>
+      <h1>Engagement Log</h1>
+      <p class="sub">Forums, seminars, study groups, office hours and everything else you show up for. Log it once, then see your term at a glance.</p>
+    </div>
+    <div class="actions">
+      <button class="btn" id="exportBtn" type="button" hidden>Export CSV</button>
+      <button class="btn primary" id="addBtn" type="button">Log an engagement</button>
+    </div>
+  </header>
+
+  <section class="summary" aria-labelledby="sumTitle">
+    <div class="summary-head">
+      <h2 id="sumTitle">This term</h2>
+      <label class="toggle" for="termSel">Term
+        <select id="termSel" class="field-ctl"></select>
+      </label>
+    </div>
+    <div class="stats">
+      <div class="stat"><span class="n" id="sAttended">0</span><span class="l">Attended</span></div>
+      <div class="stat"><span class="n" id="sHours">0</span><span class="l">Hours</span></div>
+      <div class="stat"><span class="n" id="sActive">0</span><span class="l">Spoke, led or organized</span></div>
+      <div class="stat" id="sFuWrap"><span class="n" id="sFollow">0</span><span class="l">Open follow-ups</span></div>
+    </div>
+    <div class="mix">
+      <div class="mixbar" id="mixbar" role="img" aria-label="Engagements by type"></div>
+      <div class="legend" id="legend"></div>
+    </div>
+  </section>
+
+  <div class="filters">
+    <input type="search" id="q" class="field-ctl" placeholder="Search titles, hosts, people, notes" aria-label="Search">
+    <select id="fType" class="field-ctl" aria-label="Filter by type"><option value="">All types</option></select>
+    <select id="fRole" class="field-ctl" aria-label="Filter by role"><option value="">All roles</option></select>
+    <label class="toggle" for="fFu"><input type="checkbox" id="fFu"> Open follow-ups only</label>
+  </div>
+
+  <p class="notice" id="notice" hidden></p>
+  <div class="log" id="log">
+    <div class="empty" id="loading">
+      <h3>Loading your log</h3>
+      <p>Your engagements will appear here, grouped by month with the newest first.</p>
+    </div>
+  </div>
+</div>
+
+<dialog id="dlg" aria-labelledby="dlgTitle">
+  <form class="entry-form" id="form" method="dialog" novalidate>
+    <div class="form-head">
+      <h2 id="dlgTitle">Log an engagement</h2>
+      <button class="btn ghost" type="button" id="closeBtn" aria-label="Close">Close</button>
+    </div>
+    <label class="f" for="iTitle">What was it?
+      <input id="iTitle" required placeholder="e.g. JFK Jr. Forum: AI and democratic institutions">
+    </label>
+    <div class="grid3">
+      <label class="f" for="iDate">Date <input type="date" id="iDate" required></label>
+      <label class="f" for="iHours">Hours <input type="number" id="iHours" min="0" max="24" step="0.25" placeholder="1.5"></label>
+      <label class="f" for="iStatus">Status
+        <select id="iStatus"><option>Attended</option><option>Planned</option><option>Skipped</option></select>
+      </label>
+    </div>
+    <div class="grid2">
+      <label class="f" for="iType">Type <select id="iType"></select></label>
+      <label class="f" for="iRole">My role <select id="iRole"></select></label>
+    </div>
+    <div class="grid2">
+      <label class="f" for="iHost">Host / center
+        <input id="iHost" list="hosts" placeholder="e.g. Ash Center">
+        <datalist id="hosts"></datalist>
+      </label>
+      <label class="f" for="iLoc">Location <input id="iLoc" placeholder="e.g. Malkin Penthouse, Zoom"></label>
+    </div>
+    <label class="f" for="iPeople">People I met or heard from
+      <input id="iPeople" placeholder="Names, separated by commas">
+    </label>
+    <label class="f" for="iNotes">Takeaways
+      <textarea id="iNotes" rows="3" placeholder="What stuck with you? Ideas for your PAC/SYPA, coursework, or career."></textarea>
+    </label>
+    <label class="f" for="iFollow">Follow-up
+      <input id="iFollow" placeholder="e.g. Email the speaker about the paper they mentioned">
+    </label>
+    <label class="check" for="iFuDone"><input type="checkbox" id="iFuDone"> Follow-up done</label>
+    <label class="f" for="iTags">Tags
+      <input id="iTags" placeholder="AI governance, civil society, networking">
+    </label>
+    <p class="form-err" id="formErr" hidden></p>
+    <div class="form-foot">
+      <button class="btn" type="button" id="cancelBtn">Cancel</button>
+      <button class="btn primary" type="submit" id="saveBtn">Save</button>
+    </div>
+  </form>
+</dialog>
+
+<div class="toast" id="toast" role="status" hidden></div>
+
+<script>
+(() => {
+  const TYPES = [
+    ["Forum / speaker event", "--t1"],
+    ["Seminar / study group", "--t2"],
+    ["Conference / summit", "--t3"],
+    ["Workshop / training", "--t4"],
+    ["Office hours / 1:1", "--t5"],
+    ["Caucus / student org", "--t6"],
+    ["Career / recruiting", "--t7"],
+    ["Social / networking", "--muted"],
+    ["Other", "--line"],
+  ];
+  const ROLES = ["Attendee", "Participant", "Asked a question", "Speaker / panelist", "Moderator", "Organizer", "Volunteer"];
+  const ACTIVE_ROLES = new Set(["Speaker / panelist", "Moderator", "Organizer"]);
+  const HOSTS = ["Ash Center", "Belfer Center", "Shorenstein Center", "Institute of Politics", "Carr Center for Human Rights", "Center for Public Leadership", "Taubman Center", "Mossavar-Rahmani Center", "Malcolm Wiener Center", "Women and Public Policy Program", "Harvard Berkman Klein Center", "Office of Career Advancement"];
+  const typeColor = t => (TYPES.find(x => x[0] === t) || TYPES[TYPES.length - 1])[1];
+
+  const $ = id => document.getElementById(id);
+  const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+
+  // Fill selects
+  for (const [t] of TYPES) { $("iType").add(new Option(t, t)); $("fType").add(new Option(t, t)); }
+  for (const r of ROLES) { $("iRole").add(new Option(r, r)); $("fRole").add(new Option(r, r)); }
+  for (const h of HOSTS) { const o = document.createElement("option"); o.value = h; $("hosts").appendChild(o); }
+
+  // Terms: Spring Jan–May, Summer Jun–Jul, Fall Aug–Dec
+  function termOf(iso) {
+    const [y, m] = iso.split("-").map(Number);
+    if (m <= 5) return { key: `${y}-1`, label: `Spring ${y}` };
+    if (m <= 7) return { key: `${y}-2`, label: `Summer ${y}` };
+    return { key: `${y}-3`, label: `Fall ${y}` };
+  }
+  const todayIso = () => { const d = new Date(); return new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(0, 10); };
+
+  let db = null, col = null, canWrite = true;
+  let rows = [];          // [{id, ...data}]
+  let openId = null, confirmId = null, editingId = null;
+  let term = "";         // "" = all time
+  let termTouched = false;
+
+  try { const saved = localStorage.getItem("hks-log-filters"); if (saved) { const f = JSON.parse(saved); $("fFu").checked = !!f.fu; } } catch {}
+
+  function toast(msg) {
+    const t = $("toast"); t.textContent = msg; t.hidden = false;
+    clearTimeout(toast._t); toast._t = setTimeout(() => { t.hidden = true; }, 2200);
+  }
+  function notice(msg, err) { const n = $("notice"); n.textContent = msg || ""; n.hidden = !msg; n.classList.toggle("err", !!err); }
+
+  function renderTerms() {
+    const terms = new Map();
+    terms.set(termOf(todayIso()).key, termOf(todayIso()).label);
+    for (const r of rows) if (r.date) { const t = termOf(r.date); terms.set(t.key, t.label); }
+    const keys = [...terms.keys()].sort().reverse();
+    if (!termTouched) term = termOf(todayIso()).key;
+    const sel = $("termSel"); const cur = term;
+    sel.innerHTML = "";
+    for (const k of keys) sel.add(new Option(terms.get(k), k));
+    sel.add(new Option("All time", ""));
+    sel.value = cur;
+    $("sumTitle").textContent = term ? (term === termOf(todayIso()).key ? "This term" : terms.get(term)) : "All time";
+  }
+
+  function renderSummary() {
+    const inTerm = rows.filter(r => r.date && (!term || termOf(r.date).key === term));
+    const attended = inTerm.filter(r => (r.status || "Attended") === "Attended");
+    $("sAttended").textContent = attended.length;
+    const hrs = attended.reduce((s, r) => s + (Number(r.hours) || 0), 0);
+    $("sHours").textContent = Number.isInteger(hrs) ? hrs : hrs.toFixed(1);
+    $("sActive").textContent = attended.filter(r => ACTIVE_ROLES.has(r.role)).length;
+    const openFu = rows.filter(r => r.followUp && !r.followUpDone).length;
+    $("sFollow").textContent = openFu;
+    $("sFuWrap").classList.toggle("attn", openFu > 0);
+    $("sFuWrap").querySelector(".l").textContent = "Open follow-ups (all time)";
+
+    const counts = new Map();
+    for (const r of attended) counts.set(r.type || "Other", (counts.get(r.type || "Other") || 0) + 1);
+    const bar = $("mixbar"), leg = $("legend");
+    bar.innerHTML = ""; leg.innerHTML = "";
+    const ordered = TYPES.map(t => t[0]).filter(t => counts.get(t));
+    if (!ordered.length) { leg.textContent = "Nothing attended in this period yet."; return; }
+    for (const t of ordered) {
+      const n = counts.get(t);
+      const s = document.createElement("span");
+      s.style.flex = String(n); s.style.background = `var(${typeColor(t)})`; s.title = `${t}: ${n}`;
+      bar.appendChild(s);
+      const l = document.createElement("span");
+      l.innerHTML = `<i style="background:var(${typeColor(t)})"></i>${esc(t)} <b>${n}</b>`;
+      leg.appendChild(l);
+    }
+    bar.setAttribute("aria-label", "Engagements by type: " + ordered.map(t => `${t} ${counts.get(t)}`).join(", "));
+  }
+
+  function matches(r) {
+    const q = $("q").value.trim().toLowerCase();
+    if ($("fType").value && r.type !== $("fType").value) return false;
+    if ($("fRole").value && r.role !== $("fRole").value) return false;
+    if ($("fFu").checked && !(r.followUp && !r.followUpDone)) return false;
+    if (q) {
+      const hay = [r.title, r.host, r.location, r.people, r.notes, r.followUp, (r.tags || []).join(" ")].join(" ").toLowerCase();
+      if (!hay.includes(q)) return false;
+    }
+    return true;
+  }
+
+  function entryHtml(r) {
+    const d = new Date(r.date + "T12:00:00");
+    const status = r.status || "Attended";
+    const chips = [
+      `<span class="chip type" style="background:var(${typeColor(r.type)})">${esc(r.type || "Other")}</span>`,
+      r.role ? `<span class="chip role">${esc(r.role)}</span>` : "",
+      status !== "Attended" ? `<span class="chip ${status.toLowerCase()}">${esc(status)}</span>` : "",
+      r.followUp ? `<span class="chip fu${r.followUpDone ? " done" : ""}">${r.followUpDone ? "Followed up" : "Follow-up open"}</span>` : "",
+      r.example ? `<span class="chip example">Example</span>` : "",
+    ].join("");
+    const meta = [r.host, r.location, r.hours ? `${r.hours} hr` : ""].filter(Boolean).map(esc).join(" · ");
+    const open = openId === r.id;
+    let details = "";
+    if (open) {
+      const fields = [
+        ["People", r.people], ["Takeaways", r.notes], ["Follow-up", r.followUp],
+        ["Tags", (r.tags || []).join(", ")],
+      ].filter(f => f[1]);
+      const dl = fields.length ? `<dl>${fields.map(([k, v]) => `<dt>${k}</dt><dd>${esc(v)}</dd>`).join("")}</dl>` : `<p class="meta">No notes yet. Edit to add takeaways or a follow-up.</p>`;
+      let act = "";
+      if (canWrite) {
+        act = confirmId === r.id
+          ? `<span class="confirm">Delete this entry?<button class="btn danger" data-act="del-yes" data-id="${r.id}" type="button">Delete</button><button class="btn ghost" data-act="del-no" type="button">Keep</button></span>`
+          : `<button class="btn" data-act="edit" data-id="${r.id}" type="button">Edit</button>
+             ${r.followUp ? `<button class="btn" data-act="fu" data-id="${r.id}" type="button">${r.followUpDone ? "Reopen follow-up" : "Mark followed up"}</button>` : ""}
+             <button class="btn ghost danger" data-act="del" data-id="${r.id}" type="button">Delete</button>`;
+      }
+      details = `<div class="details">${dl}<div class="actions">${act}</div></div>`;
+    }
+    return `<article class="entry">
+      <div class="date"><div class="d">${d.getDate()}</div><div class="w">${d.toLocaleDateString(undefined, { weekday: "short" })}</div></div>
+      <div class="body">
+        <div class="row1"><button class="title" data-act="toggle" data-id="${r.id}" aria-expanded="${open}" type="button">${esc(r.title)}</button></div>
+        ${meta ? `<div class="meta">${meta}</div>` : ""}
+        <div class="chips">${chips}</div>
+        ${details}
+      </div>
+    </article>`;
+  }
+
+  function renderLog() {
+    const log = $("log");
+    if (!rows.length) {
+      log.innerHTML = `<div class="empty"><h3>No engagements logged yet</h3>
+        <p>Add the last forum, seminar or coffee chat you went to. Each entry keeps the date, your role, who you met and what to follow up on.</p>
+        ${canWrite ? `<button class="btn primary" data-act="add" type="button">Log your first engagement</button>` : ""}</div>`;
+      return;
+    }
+    const list = rows.filter(matches).sort((a, b) => (b.date || "").localeCompare(a.date || "") || (b.createdAt || 0) - (a.createdAt || 0));
+    if (!list.length) { log.innerHTML = `<div class="empty"><h3>Nothing matches</h3><p>Try clearing the search or filters.</p></div>`; return; }
+    const groups = new Map();
+    for (const r of list) {
+      const k = (r.date || "").slice(0, 7);
+      if (!groups.has(k)) groups.set(k, []);
+      groups.get(k).push(r);
+    }
+    let html = "";
+    for (const [k, items] of groups) {
+      const label = new Date(k + "-15T12:00:00").toLocaleDateString(undefined, { month: "long", year: "numeric" });
+      html += `<section class="month"><h3><span>${esc(label)}</span><span>${items.length}</span></h3>${items.map(entryHtml).join("")}</section>`;
+    }
+    const hasExamples = rows.some(r => r.example);
+    if (hasExamples && canWrite) html += `<p class="notice">Entries marked Example are samples to show how the log works. <button class="btn ghost" data-act="clear-examples" type="button">Remove examples</button></p>`;
+    log.innerHTML = html;
+  }
+
+  function render() { renderTerms(); renderSummary(); renderLog(); }
+
+  // Form
+  function openForm(r) {
+    editingId = r ? r.id : null;
+    $("dlgTitle").textContent = r ? "Edit engagement" : "Log an engagement";
+    $("iTitle").value = r?.title || "";
+    $("iDate").value = r?.date || todayIso();
+    $("iHours").value = r?.hours ?? "";
+    $("iStatus").value = r?.status || "Attended";
+    $("iType").value = r?.type || TYPES[0][0];
+    $("iRole").value = r?.role || ROLES[0];
+    $("iHost").value = r?.host || "";
+    $("iLoc").value = r?.location || "";
+    $("iPeople").value = r?.people || "";
+    $("iNotes").value = r?.notes || "";
+    $("iFollow").value = r?.followUp || "";
+    $("iFuDone").checked = !!r?.followUpDone;
+    $("iTags").value = (r?.tags || []).join(", ");
+    $("formErr").hidden = true;
+    try { $("dlg").showModal(); } catch { $("dlg").setAttribute("open", ""); }
+    $("iTitle").focus();
+  }
+  function closeForm() { try { $("dlg").close(); } catch { $("dlg").removeAttribute("open"); } }
+
+  $("form").addEventListener("submit", async e => {
+    e.preventDefault();
+    const title = $("iTitle").value.trim(), date = $("iDate").value;
+    const err = $("formErr");
+    if (!title || !date) { err.textContent = "Add a title and a date to save this entry."; err.hidden = false; return; }
+    if (!col) { err.textContent = "Saving isn't available in this view. Open the page signed in to claude.ai to save entries."; err.hidden = false; return; }
+    const hours = $("iHours").value === "" ? null : Math.max(0, Number($("iHours").value));
+    const prev = editingId ? rows.find(r => r.id === editingId) : null;
+    const data = {
+      title, date, hours,
+      status: $("iStatus").value, type: $("iType").value, role: $("iRole").value,
+      host: $("iHost").value.trim(), location: $("iLoc").value.trim(),
+      people: $("iPeople").value.trim(), notes: $("iNotes").value.trim(),
+      followUp: $("iFollow").value.trim(), followUpDone: $("iFuDone").checked,
+      tags: $("iTags").value.split(",").map(s => s.trim()).filter(Boolean),
+      example: false,
+      createdAt: prev?.createdAt || Date.now(), updatedAt: Date.now(),
+    };
+    $("saveBtn").disabled = true;
+    try {
+      if (editingId) await col.doc(editingId).set(data); else await col.add(data);
+      closeForm(); toast(editingId ? "Entry updated" : "Engagement logged");
+    } catch (ex) {
+      err.textContent = ex?.code === "quota_exceeded" ? "The log is full. Delete some old entries, then save again." :
+        ex?.code === "invalid_argument" ? "You don't have permission to change this log." : "Couldn't save. Check your connection and try again.";
+      err.hidden = false;
+    } finally { $("saveBtn").disabled = false; }
+  });
+  $("cancelBtn").onclick = closeForm;
+  $("closeBtn").onclick = closeForm;
+  $("addBtn").onclick = () => openForm(null);
+
+  // List interactions
+  $("log").addEventListener("click", async e => {
+    const b = e.target.closest("[data-act]"); if (!b) return;
+    const id = b.dataset.id, act = b.dataset.act;
+    const r = rows.find(x => x.id === id);
+    if (act === "toggle") { openId = openId === id ? null : id; confirmId = null; renderLog(); }
+    else if (act === "add") openForm(null);
+    else if (act === "edit" && r) openForm(r);
+    else if (act === "del") { confirmId = id; renderLog(); }
+    else if (act === "del-no") { confirmId = null; renderLog(); }
+    else if (act === "del-yes" && col) {
+      try { await col.doc(id).delete(); confirmId = null; openId = null; toast("Entry deleted"); }
+      catch { notice("Couldn't delete that entry. Try again.", true); }
+    }
+    else if (act === "fu" && r && col) {
+      try { await col.doc(id).update({ followUpDone: !r.followUpDone, updatedAt: Date.now() }); toast(r.followUpDone ? "Follow-up reopened" : "Marked as followed up"); }
+      catch { notice("Couldn't update that entry. Try again.", true); }
+    }
+    else if (act === "clear-examples" && col) {
+      for (const x of rows.filter(x => x.example)) { try { await col.doc(x.id).delete(); } catch {} }
+      toast("Examples removed");
+    }
+  });
+
+  for (const id of ["q", "fType", "fRole"]) $(id).addEventListener("input", renderLog);
+  $("fFu").addEventListener("change", () => { try { localStorage.setItem("hks-log-filters", JSON.stringify({ fu: $("fFu").checked })); } catch {} renderLog(); });
+  $("termSel").addEventListener("change", () => { term = $("termSel").value; termTouched = true; renderTerms(); renderSummary(); });
+
+  // CSV export
+  async function setupExport() {
+    const dl = await window.claude?.use?.("downloads");
+    if (!dl) return;
+    const btn = $("exportBtn"); btn.hidden = false;
+    btn.onclick = async () => {
+      const cols = ["date", "title", "status", "type", "role", "host", "location", "hours", "people", "notes", "followUp", "followUpDone", "tags"];
+      const cell = v => { const s = Array.isArray(v) ? v.join("; ") : String(v ?? ""); return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s; };
+      const list = rows.filter(r => !r.example).sort((a, b) => (a.date || "").localeCompare(b.date || ""));
+      const csv = [cols.join(","), ...list.map(r => cols.map(c => cell(r[c])).join(","))].join("\n");
+      try { const res = await dl.save({ filename: `hks-engagements-${todayIso()}.csv`, data: csv }); if (res?.status === "saved") toast("CSV saved"); }
+      catch (ex) { if (ex?.code === "unavailable") btn.hidden = true; }
+    };
+  }
+
+  async function start() {
+    render();
+    db = window.claude ? await window.claude.use("db") : null;
+    if (!db) {
+      rows = []; $("addBtn").disabled = true;
+      $("log").innerHTML = `<div class="empty"><h3>Sign in to see your log</h3><p>Your entries are saved with this page on claude.ai. Open it while signed in to view and add engagements.</p></div>`;
+      return;
+    }
+    col = db.collection("engagements");
+    try {
+      const user = await window.claude.use("user");
+      const w = user ? await user.can("data.write") : null;
+      if (w === false) { canWrite = false; $("addBtn").hidden = true; }
+    } catch {}
+    setupExport();
+    col.onSnapshot(snap => {
+      rows = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+      notice("");
+      render();
+    }, err => {
+      notice(err?.code === "revoked" ? "This log is no longer available in this view." : "Lost the connection to your log. Reload the page to reconnect.", true);
+    });
+  }
+  start();
+})();
+</script>
