@@ -15,6 +15,12 @@ GREENHOUSE = {"jobs": [
      "location": {"name": "San Francisco"}},
     {"title": "AI Policy Fellowship", "absolute_url": "https://example.com/gh/3",
      "location": {"name": "Remote"}},
+    {"title": "Chief of Staff, Public Sector", "absolute_url": "https://example.com/gh/4",
+     "location": {"name": "Washington, DC"}},
+    {"title": "Software Engineering Intern", "absolute_url": "https://example.com/gh/5",
+     "location": {"name": "New York"}},
+    {"title": "Senior Fellow, Economic Studies", "absolute_url": "https://example.com/gh/6",
+     "location": {"name": "Washington, DC"}},
 ]}
 ASHBY = {"jobs": [
     {"title": "Research Internship – Societal Impacts", "jobUrl": "https://example.com/a/1",
@@ -33,11 +39,12 @@ def fake_get_json(url):
     return GREENHOUSE if "greenhouse" in url else ASHBY
 
 
-ORGS = """name,category,source_type,source,notes
-Lab A,AI lab,greenhouse,laba,
-Lab B,AI lab,ashby,labb,
-Civil Org,Civil society,page,https://civil.example.org/careers/,
-Broken Org,Civil society,page,https://broken.example.org/,
+ORGS = """name,track,source_type,source,notes
+Lab A,AI & tech policy,greenhouse,laba,
+Lab B,AI & tech policy,ashby,labb,
+Civil Org,Women's rights & advocacy,page,https://civil.example.org/careers/,
+Broken Org,Workforce & labor,page,https://broken.example.org/,
+Federal: Labor,Workforce & labor,usajobs,Department of Labor,
 # Commented Org,x,page,https://x,
 """
 
@@ -82,11 +89,20 @@ class TrackerTest(unittest.TestCase):
             "Policy Intern, Summer 2027", "AI Policy Fellowship",
             "Research Internship – Societal Impacts", "Summer 2027 Legal Internship",
             "Technology Policy Fellowship (application opens soon)",
+            "Chief of Staff, Public Sector",
         })
+        by_title = {r["title"]: r for r in self.rows()}
+        self.assertEqual(by_title["Chief of Staff, Public Sector"]["role_type"], "Chief of staff")
+        self.assertEqual(by_title["AI Policy Fellowship"]["role_type"], "Fellowship")
+        self.assertEqual(by_title["Summer 2027 Legal Internship"]["track"], "Women's rights & advocacy")
         legal = next(r for r in self.rows() if r["title"].startswith("Summer 2027 Legal"))
         self.assertEqual(legal["url"], "https://civil.example.org/jobs/summer-legal-intern")
-        self.assertIn("Broken Org", (self.tmp / "run_report.md").read_text())
-        self.assertIn("5 new", (self.tmp / "new_postings.md").read_text())
+        report = (self.tmp / "run_report.md").read_text()
+        self.assertIn("Broken Org", report)
+        self.assertIn("Federal: Labor**: skipped", report)  # no USAJOBS key in tests
+        alert = (self.tmp / "new_postings.md").read_text()
+        self.assertIn("6 new", alert)
+        self.assertIn("## Women's rights & advocacy", alert)
         self.assertTrue((self.tmp / "internships.xlsx").exists())
 
     def test_second_run_only_alerts_on_new_and_keeps_user_notes(self):
@@ -110,6 +126,23 @@ class TrackerTest(unittest.TestCase):
         alert = (self.tmp / "new_postings.md").read_text()
         self.assertIn("1 new", alert)
         self.assertIn("Fall 2027 Research Intern", alert)
+
+    def test_usajobs_parses_results_when_key_is_set(self):
+        payload = {"SearchResult": {"SearchResultItems": [
+            {"MatchedObjectDescriptor": {
+                "PositionTitle": "Student Trainee (Economist)", "OrganizationName": "Bureau of Labor Statistics",
+                "PositionURI": "https://www.usajobs.gov/job/1", "PositionLocationDisplay": "Washington, DC"}},
+            {"MatchedObjectDescriptor": {
+                "PositionTitle": "Supervisory Economist", "OrganizationName": "Bureau of Labor Statistics",
+                "PositionURI": "https://www.usajobs.gov/job/2", "PositionLocationDisplay": "Washington, DC"}},
+        ]}}
+        resp = mock.Mock(**{"json.return_value": payload})
+        env = {"USAJOBS_API_KEY": "k", "USAJOBS_EMAIL": "me@example.com"}
+        with mock.patch.dict("os.environ", env), mock.patch.object(tracker.requests, "get", return_value=resp):
+            tracker.run(self.config, self.orgs, alerts=False)
+        fed = [r for r in self.rows() if r["organization"] == "Federal: Labor"]
+        self.assertEqual([r["title"] for r in fed], ["Student Trainee (Economist) (Bureau of Labor Statistics)"])
+        self.assertEqual(fed[0]["role_type"], "Internship")
 
     def test_no_new_postings_removes_alert_file(self):
         tracker.run(self.config, self.orgs, alerts=False)

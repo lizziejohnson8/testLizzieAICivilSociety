@@ -37,6 +37,8 @@ jobs:
           SMTP_FROM: ${{ secrets.SMTP_FROM }}
           ALERT_EMAIL_TO: ${{ secrets.ALERT_EMAIL_TO }}
           SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+          USAJOBS_API_KEY: ${{ secrets.USAJOBS_API_KEY }}
+          USAJOBS_EMAIL: ${{ secrets.USAJOBS_EMAIL }}
         run: python tracker.py
 
       - name: Open an alert issue
@@ -44,14 +46,14 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          gh label create internship-alert --color 2E7D32 --description "New internship postings" 2>/dev/null || true
+          gh label create internship-alert --color 2E7D32 --description "New internship / fellowship / chief of staff postings" 2>/dev/null || true
           gh issue create \
-            --title "🔔 ${{ steps.tracker.outputs.new_count }} new internship posting(s) — $(date -u +%Y-%m-%d)" \
+            --title "🔔 ${{ steps.tracker.outputs.new_count }} new posting(s) — $(date -u +%Y-%m-%d)" \
             --body-file data/new_postings.md \
             --label internship-alert \
             --assignee "${{ github.repository_owner }}" \
           || gh issue create \
-            --title "🔔 ${{ steps.tracker.outputs.new_count }} new internship posting(s) — $(date -u +%Y-%m-%d)" \
+            --title "🔔 ${{ steps.tracker.outputs.new_count }} new posting(s) — $(date -u +%Y-%m-%d)" \
             --body-file data/new_postings.md \
             --label internship-alert
 

@@ -1,19 +1,44 @@
-name,category,source_type,source,notes
-Anthropic,AI lab,greenhouse,anthropic,Policy & societal impacts teams; fellows program
-OpenAI,AI lab,ashby,openai,
-Google DeepMind,AI lab,greenhouse,deepmind,
-Mozilla,Tech nonprofit,greenhouse,mozilla,Mozilla Corp board; Foundation fellowships also announced at foundation.mozilla.org
-Center for Democracy & Technology,Civil society,page,https://cdt.org/careers/,Paid 10-week summer internships (incl. AI Governance Lab)
-Data & Society,Research institute,page,https://datasociety.net/jobs-fellowships/,
-AI Now Institute,Research institute,page,https://ainowinstitute.org/careers-2,
-Partnership on AI,Multistakeholder,page,https://partnershiponai.org/careers/,
-Electronic Privacy Information Center (EPIC),Civil society,page,https://epic.org/about/careers/,IPIOP internship (law students)
-Electronic Frontier Foundation,Civil society,page,https://www.eff.org/opportunities/interns,
-Access Now,Civil society,page,https://www.accessnow.org/careers/,Verify URL if the run report shows an error
-Berkman Klein Center (Harvard),Research institute,page,https://cyber.harvard.edu/getinvolved/internships,Summer internship program
-Centre for the Governance of AI (GovAI),AI governance,page,https://www.governance.ai/opportunities,Summer/Winter fellowships
-Center for Security and Emerging Technology (CSET),Think tank,page,https://cset.georgetown.edu/careers/,
-Brookings Institution,Think tank,page,https://www.brookings.edu/careers/,
-New America,Think tank,page,https://www.newamerica.org/jobs/,
-Aspen Institute,Think tank,page,https://www.aspeninstitute.org/careers/,
-Future of Life Institute,AI governance,page,https://futureoflife.org/careers/,
+name,track,source_type,source,notes
+Anthropic,AI & tech policy,greenhouse,anthropic,Policy teams; chief of staff roles
+OpenAI,AI & tech policy,ashby,openai,Global affairs; chief of staff roles
+Google DeepMind,AI & tech policy,greenhouse,deepmind,
+Center for Democracy & Technology,AI & tech policy,page,https://cdt.org/careers/,Paid 10-week summer internships incl. AI Governance Lab
+Data & Society,AI & tech policy,page,https://datasociety.net/jobs-fellowships/,
+AI Now Institute,AI & tech policy,page,https://ainowinstitute.org/careers-2,
+Partnership on AI,AI & tech policy,page,https://partnershiponai.org/careers/,
+Electronic Privacy Information Center (EPIC),AI & tech policy,page,https://epic.org/about/careers/,IPIOP internship is mostly for law students
+Berkman Klein Center (Harvard),AI & tech policy,page,https://cyber.harvard.edu/getinvolved/internships,Summer internship program
+Centre for the Governance of AI (GovAI),AI & tech policy,page,https://www.governance.ai/opportunities,Summer/Winter fellowships
+Center for Security and Emerging Technology (CSET),AI & tech policy,page,https://cset.georgetown.edu/careers/,
+New America,AI & tech policy,page,https://www.newamerica.org/jobs/,Also Better Life Lab / Center on Education & Labor
+Center for American Progress,Workforce & labor,page,https://www.americanprogress.org/about/careers/,Paid DC summer internship (Jun–Aug); verify URL if run report shows an error
+Roosevelt Institute,Workforce & labor,page,https://rooseveltinstitute.org/careers/,Verify URL if run report shows an error
+Washington Center for Equitable Growth,Workforce & labor,page,https://equitablegrowth.org/about-us/careers/,Verify URL if run report shows an error
+Economic Policy Institute,Workforce & labor,page,https://www.epi.org/about/jobs/,Also hosts Peterson Foundation fiscal interns; verify URL
+Urban Institute,Workforce & labor,page,https://www.urban.org/about/careers,Summer research assistants; verify URL
+Jobs for the Future,Workforce & labor,page,https://www.jff.org/careers/,Verify URL if run report shows an error
+National Skills Coalition,Workforce & labor,page,https://nationalskillscoalition.org/about/careers/,Verify URL if run report shows an error
+AFL-CIO,Workforce & labor,page,https://aflcio.org/about-us/careers,Includes the AFL-CIO Technology Institute (AI & workers); verify URL
+Aspen Institute,Workforce & labor,page,https://www.aspeninstitute.org/careers/,Economic Opportunities Program
+Federal: Department of Labor,Workforce & labor,usajobs,Department of Labor,Needs free USAJOBS API key (see README)
+Bipartisan Policy Center,Business & government,page,https://careers.bipartisanpolicy.org/jobs,Paid summer program + part-time semester internships
+Peter G. Peterson Foundation Fiscal Internship,Business & government,page,https://www.pgpf.org/programs-and-projects/engaging-young-americans/fiscal-internship,Paid summer placements at DC think tanks
+Brookings Institution,Business & government,page,https://www.brookings.edu/careers/,
+American Enterprise Institute,Business & government,page,https://www.aei.org/internships/,Verify URL if run report shows an error
+Partnership for Public Service,Business & government,page,https://ourpublicservice.org/about/careers/,Verify URL if run report shows an error
+U.S. Chamber of Commerce,Business & government,page,https://www.uschamber.com/careers,Verify URL if run report shows an error
+FGS Global,Business & government,greenhouse,fgsglobal,Strategic communications & public affairs
+Teneo,Business & government,page,https://www.teneo.com/careers/,Verify URL if run report shows an error
+Palantir,Business & government,lever,palantir,Government-facing tech; chief of staff roles
+Stripe,Business & government,greenhouse,stripe,Public policy; chief of staff roles
+Scale AI,Business & government,greenhouse,scaleai,Public sector; chief of staff roles
+Federal: Department of Commerce,Business & government,usajobs,Department of Commerce,Needs free USAJOBS API key (see README)
+National Women's Law Center,Women's rights & advocacy,page,https://nwlc.org/jobs-at-nwlc/internships/,Paid internships; full jobs list at nwlc.org/jobs-at-nwlc/
+Institute for Women's Policy Research,Women's rights & advocacy,page,https://iwpr.org/careers/,Paid summer internships; women & work research; verify URL
+National Partnership for Women & Families,Women's rights & advocacy,page,https://nationalpartnership.org/about-us/careers/,Paid leave / workplace policy; verify URL
+Center for Reproductive Rights,Women's rights & advocacy,page,https://reproductiverights.org/careers/,Verify URL if run report shows an error
+EMILYs List,Women's rights & advocacy,page,https://emilyslist.org/internships/,Spring/summer/fall internships; remote or DC hybrid
+Vital Voices,Women's rights & advocacy,page,https://www.vitalvoices.org/careers/,Verify URL if run report shows an error
+Equality Now,Women's rights & advocacy,page,https://equalitynow.org/careers/,Verify URL if run report shows an error
+Catalyst,Women's rights & advocacy,page,https://www.catalyst.org/careers/,Women in business; verify URL
+Feminist Majority job board,Women's rights & advocacy,page,https://jobs.feminist.org/,Job board covering many women's rights orgs (title usually names the org)

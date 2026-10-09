@@ -1,8 +1,20 @@
-# Internship Tracker & Alerts: AI and civil society
+# Internship & Job Tracker with Alerts
 
-This repo checks the careers pages of organizations in your field once a day.
-It keeps every internship and fellowship it finds in a spreadsheet and alerts you
-when a new one appears.
+This repo checks the careers pages of organizations in your fields once a day.
+It keeps every matching internship, fellowship and chief-of-staff role in a
+spreadsheet and alerts you when a new one appears.
+
+It is set up for an MPP student looking for a **summer internship** in four tracks:
+
+| Track | Examples in `organizations.csv` |
+|---|---|
+| **AI & tech policy** | CDT, Data & Society, AI Now, Partnership on AI, GovAI, CSET, Anthropic, OpenAI |
+| **Workforce & labor** | CAP, Roosevelt, Equitable Growth, EPI, Urban, JFF, National Skills Coalition, AFL-CIO, Dept. of Labor |
+| **Business & government** | Bipartisan Policy Center, Peterson Foundation, Brookings, AEI, U.S. Chamber, FGS Global, Teneo, Palantir, Stripe, Dept. of Commerce |
+| **Women's rights & advocacy** | NWLC, IWPR, National Partnership for Women & Families, Center for Reproductive Rights, EMILYs List, Vital Voices, Equality Now, Catalyst, Feminist Majority job board |
+
+Each posting is also labelled with a **role type**: Internship, Fellowship,
+Chief of staff, or Early-career program.
 
 ```
 organizations.csv ──►  tracker.py  ──►  data/internships.xlsx   (formatted spreadsheet)
@@ -16,8 +28,8 @@ config.yaml       ──►  (daily, via  ──►  data/postings.csv       (sa
 1. **`organizations.csv`** lists the organizations you want to watch. Edit it on GitHub
    to add or remove organizations.
 2. Every day, **GitHub Actions** runs `tracker.py`, which pulls each organization's job
-   listings and keeps only titles that match your keywords in **`config.yaml`**
-   (intern, fellowship, summer, and so on).
+   listings and keeps only titles that match a role type in **`config.yaml`**
+   (intern, fellowship, chief of staff, and so on).
 3. Anything it hasn't seen before is added to the spreadsheet with today's date.
    It also triggers an **alert**:
    - A **GitHub issue** labelled `internship-alert` and assigned to you. GitHub emails
@@ -31,8 +43,9 @@ config.yaml       ──►  (daily, via  ──►  data/postings.csv       (sa
 
 Download `data/internships.xlsx` from GitHub. It has two sheets:
 
-- **Postings**: organization, title, location, link, first seen, last seen, and
-  whether it's still listed. New rows are highlighted in green.
+- **Postings**: organization, track, role type, title, location, link, first seen,
+  last seen, and whether it's still listed. New rows are highlighted in green.
+  Use the filter arrows to view a single track or role type.
 - **Organizations**: every organization you track, how many open matches each has,
   and whether the last check worked.
 
@@ -47,7 +60,8 @@ then carry over into the `.xlsx` on the next run.
 
 ## Adding organizations
 
-Each row in `organizations.csv` has a `source_type` and a `source`:
+Each row in `organizations.csv` has a `track` (any label you like; it's used to
+group alerts), a `source_type` and a `source`:
 
 | source_type  | Use when the jobs link looks like…                 | `source` value               |
 |--------------|----------------------------------------------------|------------------------------|
@@ -55,6 +69,7 @@ Each row in `organizations.csv` has a `source_type` and a `source`:
 | `lever`      | `jobs.lever.co/acme`                               | `acme`                       |
 | `ashby`      | `jobs.ashbyhq.com/openai`                          | `openai`                     |
 | `workable`   | `apply.workable.com/acme`                          | `acme`                       |
+| `usajobs`    | Federal jobs (needs a free API key, see Setup)     | a search, e.g. `Department of Labor` |
 | `page`       | Anything else: an ordinary careers or internships page | the full URL                 |
 
 To find out which type an organization uses, click **Apply** on any of its job listings
@@ -71,9 +86,10 @@ appears in `data/run_report.md` and in the **Organizations** sheet so you can fi
 
 Edit `config.yaml`:
 
-- `include_keywords`: a title must contain at least one of these (whole words,
-  case-insensitive).
-- `exclude_keywords`: a title containing any of these is dropped (for example `senior`).
+- `role_types`: a title must match at least one role type's keywords (whole words,
+  case-insensitive). Add your own, for example `Policy analyst: [policy analyst]`.
+- `exclude_keywords`: a title containing any of these is dropped (for example
+  `senior fellow`, `engineer` and `undergraduate`).
 - `locations`: optionally keep only postings in, for example, `Washington`, `Boston`
   or `Remote`.
 
@@ -92,6 +108,12 @@ Edit `config.yaml`:
    `SMTP_USER`, `SMTP_PASSWORD` (for Gmail, an
    [app password](https://myaccount.google.com/apppasswords)), and `ALERT_EMAIL_TO`.
 5. *(Optional)* **Slack alerts.** Add a `SLACK_WEBHOOK_URL` secret (an incoming webhook).
+6. *(Optional)* **Federal jobs (USAJOBS).** Request a free key at
+   [developer.usajobs.gov](https://developer.usajobs.gov/apirequest/), then add the
+   secrets `USAJOBS_API_KEY` and `USAJOBS_EMAIL` (the email you registered with).
+   Until then, the Department of Labor and Department of Commerce rows are skipped,
+   not counted as errors. Federal student internships are titled "Student Trainee",
+   and the Internship role type already matches that.
 
 To change how often it runs, edit the `cron` line in
 `.github/workflows/internship-alerts.yml`. For example, `17 12 * * 1-5` runs on weekdays only.
@@ -113,5 +135,8 @@ python -m unittest discover -s tests
 - Many fellowships (for example TechCongress, university summer programs, and
   government programs like PMF) are only announced once a year. Add their pages anyway:
   the tracker alerts you when wording like "2027 Fellowship" appears.
+- Job boards that require a login (Handshake, the HKS career office's board, LinkedIn)
+  can't be checked automatically. Set up their own saved-search email alerts alongside
+  this tracker.
 - Good places to find more organizations: the 80,000 Hours job board (AI policy filter),
-  Tech Policy Press, the All Tech Is Human job board, and HKS's career office listings.
+  the All Tech Is Human job board, Tech Policy Press, and PoliticalJobHunt.

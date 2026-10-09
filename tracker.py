@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """Internship tracker: checks organizations' job boards, updates a spreadsheet,
-and sends alerts when new internship/fellowship postings appear.
+and sends alerts when new internship, fellowship or chief-of-staff postings appear.
 
 Usage:
     python tracker.py              # check every organization, update data/, send alerts
@@ -37,7 +37,7 @@ HEADERS = {"User-Agent": "Mozilla/5.0 (internship-tracker; personal job search)"
 TIMEOUT = 30
 
 COLUMNS = [
-    "id", "organization", "category", "title", "location", "url", "source",
+    "id", "organization", "track", "role_type", "title", "location", "url", "source",
     "first_seen", "last_seen", "still_listed", "my_status", "my_notes",
 ]
 # Columns you can edit by hand in data/postings.csv; the tracker never overwrites them.
@@ -47,11 +47,12 @@ USER_COLUMNS = ("my_status", "my_notes")
 @dataclass
 class Posting:
     organization: str
-    category: str
+    track: str
     title: str
     url: str
     location: str = ""
     source: str = ""
+    role_type: str = ""
     id: str = field(default="")
 
     def __post_init__(self):
@@ -78,7 +79,7 @@ def get_text(url: str) -> str:
 def fetch_greenhouse(org: dict) -> list[Posting]:
     data = get_json(f"https://boards-api.greenhouse.io/v1/boards/{org['source']}/jobs")
     return [
-        Posting(org["name"], org["category"], j["title"], j["absolute_url"],
+        Posting(org["name"], org["track"], j["title"], j["absolute_url"],
                 (j.get("location") or {}).get("name", ""), "greenhouse")
         for j in data.get("jobs", [])
     ]
@@ -87,7 +88,7 @@ def fetch_greenhouse(org: dict) -> list[Posting]:
 def fetch_lever(org: dict) -> list[Posting]:
     data = get_json(f"https://api.lever.co/v0/postings/{org['source']}?mode=json")
     return [
-        Posting(org["name"], org["category"], j["text"], j["hostedUrl"],
+        Posting(org["name"], org["track"], j["text"], j["hostedUrl"],
                 (j.get("categories") or {}).get("location", ""), "lever")
         for j in data
     ]
@@ -96,7 +97,7 @@ def fetch_lever(org: dict) -> list[Posting]:
 def fetch_ashby(org: dict) -> list[Posting]:
     data = get_json(f"https://api.ashbyhq.com/posting-api/job-board/{org['source']}")
     return [
-        Posting(org["name"], org["category"], j["title"], j["jobUrl"],
+        Posting(org["name"], org["track"], j["title"], j["jobUrl"],
                 j.get("location", ""), "ashby")
         for j in data.get("jobs", [])
     ]
@@ -105,10 +106,40 @@ def fetch_ashby(org: dict) -> list[Posting]:
 def fetch_workable(org: dict) -> list[Posting]:
     data = get_json(f"https://apply.workable.com/api/v1/widget/accounts/{org['source']}")
     return [
-        Posting(org["name"], org["category"], j["title"], j["url"],
+        Posting(org["name"], org["track"], j["title"], j["url"],
                 ", ".join(filter(None, [j.get("city"), j.get("country")])), "workable")
         for j in data.get("jobs", [])
     ]
+
+
+class SkipSource(Exception):
+    """A source that isn't configured (e.g. missing API key). Reported, but not as an error."""
+
+
+def fetch_usajobs(org: dict) -> list[Posting]:
+    """Federal jobs via the free USAJOBS API. `source` is a keyword search, e.g. "Department of Labor".
+
+    Needs USAJOBS_API_KEY and USAJOBS_EMAIL (request a key at developer.usajobs.gov).
+    """
+    key, email = os.environ.get("USAJOBS_API_KEY"), os.environ.get("USAJOBS_EMAIL")
+    if not (key and email):
+        raise SkipSource("set USAJOBS_API_KEY and USAJOBS_EMAIL to enable")
+    resp = requests.get(
+        "https://data.usajobs.gov/api/search",
+        params={"Keyword": org["source"], "ResultsPerPage": 500},
+        headers={"Host": "data.usajobs.gov", "User-Agent": email, "Authorization-Key": key},
+        timeout=TIMEOUT,
+    )
+    resp.raise_for_status()
+    items = resp.json().get("SearchResult", {}).get("SearchResultItems", [])
+    postings = []
+    for item in items:
+        d = item.get("MatchedObjectDescriptor", {})
+        agency = d.get("OrganizationName") or d.get("DepartmentName") or ""
+        title = f"{d.get('PositionTitle', '')} ({agency})" if agency else d.get("PositionTitle", "")
+        postings.append(Posting(org["name"], org["track"], title, d.get("PositionURI", ""),
+                                d.get("PositionLocationDisplay", ""), "usajobs"))
+    return postings
 
 
 class _PageParser(HTMLParser):
@@ -168,7 +199,7 @@ def fetch_page(org: dict) -> list[Posting]:
         if text.lower() in seen:
             continue
         seen.add(text.lower())
-        postings.append(Posting(org["name"], org["category"], text, link, "", "page"))
+        postings.append(Posting(org["name"], org["track"], text, link, "", "page"))
     return postings
 
 
@@ -177,6 +208,7 @@ FETCHERS = {
     "lever": fetch_lever,
     "ashby": fetch_ashby,
     "workable": fetch_workable,
+    "usajobs": fetch_usajobs,
     "page": fetch_page,
 }
 
@@ -191,17 +223,21 @@ def _pattern(words: list[str]) -> re.Pattern | None:
 
 
 def make_filter(config: dict):
-    include = _pattern(config.get("include_keywords"))
+    """Returns keep(posting) -> bool, which also labels the posting with its role type."""
+    role_types = {name: _pattern(words) for name, words in (config.get("role_types") or {}).items()}
+    role_types = {name: pat for name, pat in role_types.items() if pat}
     exclude = _pattern(config.get("exclude_keywords"))
     locations = [l.lower() for l in config.get("locations") or []]
 
     def keep(p: Posting) -> bool:
-        if include and not include.search(p.title):
-            return False
         if exclude and exclude.search(p.title):
+            return False
+        matched = [name for name, pat in role_types.items() if pat.search(p.title)]
+        if role_types and not matched:
             return False
         if locations and p.location and not any(l in p.location.lower() for l in locations):
             return False
+        p.role_type = ", ".join(matched)
         return True
 
     return keep
@@ -224,12 +260,12 @@ def merge(existing: dict[str, dict], found: list[Posting], checked_orgs: set[str
     for p in found:
         found_ids.add(p.id)
         if p.id in rows:
-            rows[p.id].update(title=p.title, location=p.location, url=p.url,
-                              last_seen=today, still_listed="Yes")
+            rows[p.id].update(title=p.title, location=p.location, url=p.url, track=p.track,
+                              role_type=p.role_type, last_seen=today, still_listed="Yes")
         else:
             rows[p.id] = {
-                "id": p.id, "organization": p.organization, "category": p.category,
-                "title": p.title, "location": p.location, "url": p.url, "source": p.source,
+                "id": p.id, "organization": p.organization, "track": p.track,
+                "role_type": p.role_type, "title": p.title, "location": p.location, "url": p.url, "source": p.source,
                 "first_seen": today, "last_seen": today, "still_listed": "Yes",
                 "my_status": "", "my_notes": "",
             }
@@ -280,7 +316,7 @@ def write_xlsx(rows: list[dict], new_ids: set[str], orgs: list[dict], errors: di
         if r["still_listed"] != "Yes":
             for cell in ws[row]:
                 cell.font = gone_font
-    widths = {"organization": 30, "category": 18, "title": 55, "location": 22, "url": 45,
+    widths = {"organization": 30, "track": 20, "role_type": 16, "title": 55, "location": 22, "url": 45,
               "source": 11, "first_seen": 12, "last_seen": 12, "still_listed": 11,
               "my_status": 14, "my_notes": 40}
     for i, c in enumerate(COLUMNS[1:], start=1):
@@ -289,16 +325,16 @@ def write_xlsx(rows: list[dict], new_ids: set[str], orgs: list[dict], errors: di
     ws.auto_filter.ref = ws.dimensions
 
     os_ = wb.create_sheet("Organizations")
-    os_.append(["Name", "Category", "Source type", "Source", "Open matches", "Last check", "Notes"])
+    os_.append(["Name", "Track", "Source type", "Source", "Open matches", "Last check", "Notes"])
     for cell in os_[1]:
         cell.font = Font(bold=True, color="FFFFFF")
         cell.fill = header_fill
     for o in orgs:
         count = sum(1 for r in rows if r["organization"] == o["name"] and r["still_listed"] == "Yes")
-        status = f"ERROR: {errors[o['name']]}" if o["name"] in errors else "OK"
-        os_.append([o["name"], o["category"], o["source_type"], o["source"], count, status,
+        status = errors.get(o["name"], "OK")
+        os_.append([o["name"], o["track"], o["source_type"], o["source"], count, status,
                     o.get("notes", "")])
-    for col, width in zip("ABCDEFG", (40, 18, 12, 50, 13, 40, 50)):
+    for col, width in zip("ABCDEFG", (40, 20, 12, 50, 13, 40, 50)):
         os_.column_dimensions[col].width = width
     for row in os_.iter_rows(min_row=2):
         for cell in row:
@@ -309,16 +345,18 @@ def write_xlsx(rows: list[dict], new_ids: set[str], orgs: list[dict], errors: di
 # --------------------------------------------------------------------------- alerts
 
 def format_alert(new: list[Posting]) -> str:
-    lines = [f"**{len(new)} new internship/fellowship posting(s) found**", ""]
-    by_org: dict[str, list[Posting]] = {}
+    lines = [f"**{len(new)} new posting(s) found**", ""]
+    by_track: dict[str, dict[str, list[Posting]]] = {}
     for p in new:
-        by_org.setdefault(p.organization, []).append(p)
-    for org in sorted(by_org):
-        lines.append(f"### {org}")
-        for p in by_org[org]:
-            loc = f" — {p.location}" if p.location else ""
-            lines.append(f"- [{p.title}]({p.url}){loc}")
-        lines.append("")
+        by_track.setdefault(p.track or "Other", {}).setdefault(p.organization, []).append(p)
+    for track in sorted(by_track):
+        lines.append(f"## {track}")
+        for org in sorted(by_track[track]):
+            lines.append(f"**{org}**")
+            for p in by_track[track][org]:
+                extra = " — ".join(filter(None, [p.role_type, p.location]))
+                lines.append(f"- [{p.title}]({p.url})" + (f" — {extra}" if extra else ""))
+            lines.append("")
     lines.append("Full list: `data/postings.csv` / `data/internships.xlsx`")
     return "\n".join(lines)
 
@@ -376,7 +414,7 @@ def run(config_path: Path, orgs_path: Path, alerts: bool) -> int:
     keep = make_filter(config)
     today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
 
-    found, errors, checked = [], {}, set()
+    found, errors, skipped, checked = [], {}, {}, set()
     for org in orgs:
         fetch = FETCHERS.get(org["source_type"])
         if not fetch:
@@ -384,8 +422,11 @@ def run(config_path: Path, orgs_path: Path, alerts: bool) -> int:
             continue
         try:
             matches = [p for p in fetch(org) if keep(p)]
+        except SkipSource as e:
+            skipped[org["name"]] = f"skipped: {e}"
+            continue
         except Exception as e:  # one broken site shouldn't stop the run
-            errors[org["name"]] = f"{type(e).__name__}: {e}"[:200]
+            errors[org["name"]] = f"ERROR: {type(e).__name__}: {e}"[:200]
             print(f"  ! {org['name']}: {errors[org['name']]}", file=sys.stderr)
             continue
         checked.add(org["name"])
@@ -395,7 +436,7 @@ def run(config_path: Path, orgs_path: Path, alerts: bool) -> int:
     DATA.mkdir(exist_ok=True)
     rows, new = merge(load_existing(), found, checked, today)
     write_csv(rows)
-    write_xlsx(rows, {p.id for p in new}, orgs, errors)
+    write_xlsx(rows, {p.id for p in new}, orgs, {**skipped, **errors})
 
     report = [f"# Run report — {today}", "",
               f"- Organizations checked: {len(checked)}/{len(orgs)}",
@@ -404,6 +445,9 @@ def run(config_path: Path, orgs_path: Path, alerts: bool) -> int:
     if errors:
         report += ["## Sources that failed (check the URL / slug in organizations.csv)", ""]
         report += [f"- **{name}**: {err}" for name, err in sorted(errors.items())]
+    if skipped:
+        report += ["", "## Sources skipped", ""]
+        report += [f"- **{name}**: {why}" for name, why in sorted(skipped.items())]
     RUN_REPORT_MD.write_text("\n".join(report) + "\n")
 
     if new:

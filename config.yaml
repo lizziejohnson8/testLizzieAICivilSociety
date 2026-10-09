@@ -1,30 +1,53 @@
 # Which job titles count as a match. Matching is case-insensitive and on whole words.
-# A posting is kept if its title contains ANY include keyword and NO exclude keyword.
-include_keywords:
-  - intern
-  - internship
-  - internships
-  - fellow
-  - fellowship
-  - fellowships
-  - summer associate
-  - student
-  - graduate
-  - research assistant
-  - early career
+#
+# A posting is kept if its title matches at least one ROLE TYPE below and none of the
+# EXCLUDE keywords. The matching role type is shown in the spreadsheet's "Role Type"
+# column. Add, rename or remove role types freely.
+role_types:
+  Internship:
+    - intern
+    - interns
+    - internship
+    - internships
+    - summer associate
+    - graduate associate
+    - student trainee     # federal Pathways internships use this title
+    - student
+  Fellowship:
+    - fellow
+    - fellows
+    - fellowship
+    - fellowships
+  Chief of staff:
+    - chief of staff
+  Early-career program:
+    - rotational
+    - rotation program
+    - leadership development program
+    - emerging leaders
 
+# Titles containing any of these are dropped.
 exclude_keywords:
-  - senior
-  - director
   - postdoc
   - postdoctoral
-  - principal
+  - senior fellow
+  - nonresident fellow
+  - non-resident fellow
+  - visiting fellow
+  - distinguished fellow
+  - faculty
+  - phd
+  - engineer
+  - engineering
+  - software
+  - machine learning
+  - high school
+  - undergraduate       # remove this line to also see undergraduate-only internships
 
-# Optional: only keep postings whose location contains one of these (leave empty for all).
-# Pages scraped from careers sites often have no location, so they are always kept.
+# Optional: only keep postings whose location contains one of these, e.g.
+# [Washington, Boston, Cambridge, New York, Remote]. Leave empty for all.
+# Careers pages often have no location, so those postings are always kept.
 locations: []
 
-# Alerts. GitHub issues are created by the workflow automatically.
-# Email and Slack are optional and only used if the matching secrets are set
-# (see README.md).
+# Prefix for email alert subjects (email is optional, see README.md).
 email_subject_prefix: "[Internship Alert]"
